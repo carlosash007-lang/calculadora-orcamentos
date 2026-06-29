@@ -31,13 +31,13 @@ quantidade_pecas = st.number_input(
 defeito = st.selectbox(
     "2. Qual a gravidade média do defeito das peças?",
     ["Nenhum (Apenas Estética/Lavação/Finalização)", "Leve", "Mediana", "Muito avariada"],
-    help="Leve (R$ 20,00) | Mediana (R$ 40,00) | Muito avariada (R$ 70,00)"
+    help="Leve (R$ 300,00) | Mediana (R$ 400,00) | Muito avariada (R$ 600,00)"
 )
 
 # Finalização (Cobrada por serviço ou lote se quantidade for 0, vamos assumir taxa única se for 0 peças ou multiplicar por 1 se for avulso)
 finalizacao = st.radio(
     "3. Tipo de Finalização desejada:",
-    ["Nenhuma / Não precisa", "Básica (Inclusa no reparo)", "Completa (+ R$ 15,00)"],
+    ["Nenhuma / Não precisa", "Básica (Inclusa no reparo)", "Completa (+ R$ 400,00)"],
     index=0,
     horizontal=True
 )
@@ -45,7 +45,7 @@ finalizacao = st.radio(
 # Lavação à parte
 tipo_lavacao = st.radio(
     "4. Deseja incluir Lavação no serviço?",
-    ["Nenhuma / Não precisa", "Básica (+ R$ 10,00)", "Completa (+ R$ 25,00)"],
+    ["Nenhuma / Não precisa", "Básica (Inclusa no reparo)", "Completa (+ R$ 50,00)"],
     index=0,
     horizontal=True
 )
@@ -56,25 +56,25 @@ st.divider()
 
 # Preço base do defeito
 if defeito == "Leve":
-    preco_base_peca = 20.00
+    preco_base_peca = 300.00
 elif defeito == "Mediana":
-    preco_base_peca = 40.00
+    preco_base_peca = 400.00
 elif defeito == "Muito avariada":
-    preco_base_peca = 70.00
+    preco_base_peca = 600.00
 else:
     preco_base_peca = 0.00
 
 # Adicional de finalização
 if "Completa" in finalizacao:
-    adicional_finalizacao = 15.00
+    adicional_finalizacao = 400.00
 else:
     adicional_finalizacao = 0.00
 
 # Adicional de lavação
 if "Básica" in tipo_lavacao:
-    adicional_lavacao = 10.00
+    adicional_lavacao = 0.00
 elif "Completa" in tipo_lavacao:
-    adicional_lavacao = 25.00
+    adicional_lavacao = 50.00
 else:
     adicional_lavacao = 0.00
 
