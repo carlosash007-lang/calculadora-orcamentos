@@ -5,7 +5,7 @@ import urllib.parse
 st.set_page_config(page_title="Simulador de Orçamento", page_icon="🚗", layout="centered")
 
 st.title("🚗 Simulador de Orçamento Estético Automotivo")
-st.write("Preencha os detalhes para obter uma estimativa rápida do serviço nas peças do seu veículo.")
+st.write("Preencha os detalhes para obter uma estimativa rápida do serviço.")
 
 st.divider()
 
@@ -19,115 +19,126 @@ st.divider()
 # --- 2. INPUTS DO SERVIÇO ---
 st.subheader("🔧 Detalhes do Serviço")
 
-# Quantidade de peças
+# Quantidade de peças (Pode ser 0 agora)
 quantidade_pecas = st.number_input(
-    "1. Quantidade de peças a serem avaliadas:", 
-    min_value=1, 
-    value=1, 
+    "1. Quantidade de peças para reparo de defeito (opcional):", 
+    min_value=0, 
+    value=0, 
     step=1
 )
 
 # Gravidade do defeito
 defeito = st.selectbox(
-    "2. Qual a gravidade média do defeito?",
-    ["Leve", "Mediana", "Muito avariada"],
-    help="Leve (R$ 300,00) | Mediana (R$ 450,00) | Muito avariada (R$ 600,00)"
+    "2. Qual a gravidade média do defeito das peças?",
+    ["Nenhum (Apenas Estética/Lavação/Finalização)", "Leve", "Mediana", "Muito avariada"],
+    help="Leve (R$ 20,00) | Mediana (R$ 40,00) | Muito avariada (R$ 70,00)"
 )
-st.caption(f"_*Opção selecionada aplica valor base por peça de acordo com o dano._")
 
-# Finalização com preços visíveis
+# Finalização (Cobrada por serviço ou lote se quantidade for 0, vamos assumir taxa única se for 0 peças ou multiplicar por 1 se for avulso)
 finalizacao = st.radio(
     "3. Tipo de Finalização desejada:",
-    ["Básica (Inclusa)", "Completa (+ R$ 300,00)"],
+    ["Nenhuma / Não precisa", "Básica (Inclusa no reparo)", "Completa (+ R$ 15,00)"],
+    index=0,
     horizontal=True
 )
 
-# Lavação com preços visíveis
-precisa_lavacao = st.toggle("4. Deseja incluir Lavação no serviço?")
-
-tipo_lavacao = "Nenhum"
-if precisa_lavacao:
-    tipo_lavacao = st.radio(
-        "Selecione o tipo de lavação:",
-        ["Básica (inclusa)", "Completa (+ R$ 30,00)"],
-        horizontal=True
-    )
+# Lavação à parte
+tipo_lavacao = st.radio(
+    "4. Deseja incluir Lavação no serviço?",
+    ["Nenhuma / Não precisa", "Básica (+ R$ 10,00)", "Completa (+ R$ 25,00)"],
+    index=0,
+    horizontal=True
+)
 
 st.divider()
 
 # --- 3. LÓGICA DE CÁLCULO (O MOTOR) ---
 
-# Preço base por peça de acordo com o defeito
+# Preço base do defeito
 if defeito == "Leve":
-    preco_base_peca = 300.00
+    preco_base_peca = 20.00
 elif defeito == "Mediana":
-    preco_base_peca = 450.00
+    preco_base_peca = 40.00
+elif defeito == "Muito avariada":
+    preco_base_peca = 70.00
 else:
-    preco_base_peca = 600.00
+    preco_base_peca = 0.00
 
-# Custo adicional por tipo de finalização
+# Adicional de finalização
 if "Completa" in finalizacao:
-    adicional_finalizacao = 300
+    adicional_finalizacao = 15.00
 else:
     adicional_finalizacao = 0.00
 
-# Custo adicional por tipo de lavação
-if "Completa" in tipo_lavacao:
-    adicional_lavacao = 50.00
+# Adicional de lavação
+if "Básica" in tipo_lavacao:
+    adicional_lavacao = 10.00
+elif "Completa" in tipo_lavacao:
+    adicional_lavacao = 25.00
 else:
     adicional_lavacao = 0.00
 
-# Cálculo dos valores
-valor_por_peca = preco_base_peca + adicional_lavacao
-valor_total = (valor_por_peca * quantidade_pecas) + adicional_finalizacao
+# Nova lógica de cálculo flexível:
+# Se o usuário colocar peças, multiplica tudo pelas peças. 
+# Se deixar 0 peças mas escolher lavação/finalização, calcula como 1 serviço avulso.
+multiplicador = quantidade_pecas if quantidade_pecas > 0 else 1
+
+custo_reparo_total = preco_base_peca * quantidade_pecas # Reparo sempre depende de ter peças
+custo_finalizacao_total = adicional_finalizacao * multiplicador
+custo_lavacao_total = adicional_lavacao * multiplicador
+
+valor_total = custo_reparo_total + custo_finalizacao_total + custo_lavacao_total
 
 # --- 4. EXIBIÇÃO DO RESULTADO ---
 
 st.subheader("📊 Resumo da Estimativa")
 
-col1, col2 = st.columns(2)
-with col1:
-    st.metric(label="Média por Peça", value=f"R$ {valor_por_peca:,.2f}")
-with col2:
-    st.metric(label="Valor Total Estimado", value=f"R$ {valor_total:,.2f}")
+# Se não tiver peças, mostra o valor do serviço avulso
+if quantidade_pecas == 0 and valor_total > 0:
+    st.metric(label="Valor Total (Serviço Avulso)", value=f"R$ {valor_total:,.2f}")
+else:
+    col1, col2 = st.columns(2)
+    with col1:
+        valor_por_peca = preco_base_peca + adicional_finalizacao + adicional_lavacao
+        st.metric(label="Média por Peça", value=f"R$ {valor_por_peca:,.2f}")
+    with col2:
+        st.metric(label="Valor Total Estimado", value=f"R$ {valor_total:,.2f}")
 
-# Detalhamento Visual
-with st.expander("🔍 Ver detalhamento dos custos"):
-    st.write(f"• Reparo básico ({defeito}): R$ {preco_base_peca:,.2f} por peça")
-    if adicional_finalizacao > 0:
-        st.write(f"• Finalização Completa: + R$ {adicional_finalizacao:,.2f} por peça")
-    if adicional_lavacao > 0:
-        st.write(f"• Lavação selecionada: + R$ {adicional_lavacao:,.2f} por peça")
+# Detalhamento Visual Dinâmico
+if valor_total > 0:
+    with st.expander("🔍 Ver detalhamento dos custos"):
+        if custo_reparo_total > 0:
+            st.write(f"• Reparo de defeito ({quantidade_pecas}x {defeito}): R$ {custo_reparo_total:,.2f}")
+        if custo_finalizacao_total > 0:
+            st.write(f"• Finalização Completa: R$ {custo_finalizacao_total:,.2f}")
+        if custo_lavacao_total > 0:
+            st.write(f"• Lavação ({tipo_lavacao.split(' (+')[0]}): R$ {custo_lavacao_total:,.2f}")
 
 st.divider()
 
 # --- 5. AÇÃO DE AGENDAMENTO (WHATSAPP) ---
 st.subheader("🗓️ Agendar Avaliação Pessoalmente")
-st.write("Clique no botão abaixo para enviar esse orçamento direto para o nosso WhatsApp e agendarmos a vistoria do seu veículo.")
 
-# Insira o SEU número de WhatsApp aqui (com DDD, apenas números)
-# Exemplo: "5547999999999" (55 do Brasil + DDD + Número)
-SEU_WHATSAPP = "5548992103501" 
+# Lembre-se de colocar o seu número real aqui!
+SEU_WHATSAPP = "5500000000000" 
 
-# Criando o texto da mensagem automática
 texto_mensagem = f"""Olá! Gostaria de agendar uma avaliação física para o meu veículo.
 Aqui estão os detalhes do meu orçamento simulado:
 
 *Nome:* {nome}
 *Telefone:* {telefone}
 *Quantidade de peças:* {quantidade_pecas}
-*Gravidade:* {defeito}
+*Gravidade do Defeito:* {defeito}
 *Finalização:* {finalizacao.split(' (+')[0]}
 *Lavação:* {tipo_lavacao.split(' (+')[0]}
 
 *Valor Total Estimado:* R$ {valor_total:,.2f}"""
 
-# Codificando o texto para formato de link de internet
 mensagem_codificada = urllib.parse.quote(texto_mensagem)
 link_whatsapp = f"https://wa.me/{SEU_WHATSAPP}?text={mensagem_codificada}"
 
-# Botão bonito que abre o WhatsApp
-if nome and telefone:
+# CONDIÇÃO ATUALIZADA: Só precisa de Nome, Telefone e que o valor seja maior que R$ 0
+if nome and telefone and valor_total > 0:
     st.link_button("🟢 Enviar Orçamento e Agendar pelo WhatsApp", link_whatsapp, use_container_width=True)
 else:
-    st.warning("⚠️ Por favor, preencha seu *Nome* e *Telefone* no topo da página para liberar o botão de agendamento.")
+    st.warning("⚠️ Para liberar o botão de agendamento, preencha seu *Nome*, *Telefone* e selecione pelo menos um serviço (Lavação, Finalização ou Peças).")
